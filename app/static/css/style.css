@@ -1,0 +1,159 @@
+/* Additional styles for Liquefaction Alert System */
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* Print styles */
+@media print {
+    .header {
+        background: #333 !important;
+        -webkit-print-color-adjust: exact;
+    }
+
+    .container {
+        display: block;
+    }
+
+    .panel {
+        break-inside: avoid;
+        margin-bottom: 1rem;
+    }
+
+    #map {
+        height: 300px !important;
+    }
+}
+
+/* Tooltip styles */
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltip-text {
+    visibility: hidden;
+    width: 200px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -100px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.8rem;
+}
+
+.tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Animation for risk indicator */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.result-card.very-high {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* Chart container styles */
+.chart-container {
+    width: 100%;
+    height: 200px;
+    margin: 1rem 0;
+}
+
+/* Layer results table */
+.layer-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin-top: 1rem;
+}
+
+.layer-table th,
+.layer-table td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.layer-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+}
+
+.layer-table tr:hover {
+    background: #f8f9fa;
+}
+
+/* Status indicators */
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+
+.status-dot.online { background: #28a745; }
+.status-dot.offline { background: #dc3545; }
+.status-dot.warning { background: #ffc107; }
+
+/* API status footer */
+.api-status {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #f8f9fa;
+    padding: 0.5rem 1rem;
+    display: flex;
+    justify-content: space-around;
+    font-size: 0.75rem;
+    color: #666;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .header h1 {
+        font-size: 1.2rem;
+    }
+
+    .panel-body {
+        padding: 0.75rem;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .result-value {
+        font-size: 1.5rem;
+    }
+}

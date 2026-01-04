@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+        }
+        .header {
+            background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #0f3460;
+        }
+        .header h1 { font-size: 1.2rem; font-weight: 600; color: #e94560; }
+        .header .version { font-size: 0.75rem; color: #888; }
+
+        .container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            height: calc(100vh - 55px);
+        }
+
+        .sidebar {
+            background: #16213e;
+            overflow-y: auto;
+            border-right: 1px solid #0f3460;
+        }
+
+        .sidebar-section {
+            padding: 1rem;
+            border-bottom: 1px solid #0f3460;
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: #888;
+            margin-bottom: 0.8rem;
+            letter-spacing: 1px;
+        }
+
+        #map { height: 100%; }
+
+        .location-box {
+            background: #0f3460;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .location-box .coords {
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: #e94560;
+            margin-bottom: 0.5rem;
+        }
+
+        .location-box .hint {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.9rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #e94560 0%, #c23a51 100%);
+            color: white;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(233,69,96,0.3); }
+        .btn-primary:disabled { background: #444; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .toggle-advanced {
+            background: none;
+            border: 1px solid #0f3460;
+            color: #888;
+            padding: 0.5rem;
+            font-size: 0.8rem;
+            margin-top: 0.8rem;
+        }
+        .toggle-advanced:hover { border-color: #e94560; color: #e94560; }
+
+        .advanced-panel { display: none; }
+        .advanced-panel.show { display: block; }
+
+        .form-group { margin-bottom: 0.8rem; }
+        .form-group label {
+            display: block;
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 0.3rem;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.6rem;
+            border: 1px solid #0f3460;
+            border-radius: 6px;
+            background: #1a1a2e;
+            color: #eee;
+            font-size: 0.9rem;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #e94560;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        /* Results */
+        .result-card {
+            background: #0f3460;
+            border-radius: 10px;
+            padding: 1.2rem;
+            text-align: center;
+        }
+
+        .fs-value {
+            font-size: 3rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .fs-label { font-size: 0.8rem; color: #888; margin-top: 0.3rem; }
+
+        .risk-badge {
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-top: 0.8rem;
+        }
+
+        .risk-very-high { background: #dc3545; color: white; }
+        .risk-high { background: #fd7e14; color: white; }
+        .risk-moderate { background: #ffc107; color: #333; }
+        .risk-low { background: #28a745; color: white; }
+
+        .fs-very-high { color: #dc3545; }
+        .fs-high { color: #fd7e14; }
+        .fs-moderate { color: #ffc107; }
+        .fs-low { color: #28a745; }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .info-item {
+            background: #1a1a2e;
+            padding: 0.6rem;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .info-item .value { font-size: 1rem; font-weight: 600; color: #e94560; }
+        .info-item .label { font-size: 0.65rem; color: #888; margin-top: 0.2rem; }
+
+        .recommendation {
+            background: #1a1a2e;
+            padding: 0.8rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            color: #aaa;
+            margin-top: 1rem;
+            border-left: 3px solid #e94560;
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            color: #888;
+        }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid #0f3460;
+            border-top-color: #e94560;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .hidden { display: none !important; }
+
+        .eq-info {
+            background: #1a1a2e;
+            padding: 0.8rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .eq-info .mag { font-size: 1.5rem; font-weight: 700; color: #e94560; }
+        .eq-info .pga { font-size: 1.1rem; font-weight: 600; }
+        .eq-info .label { font-size: 0.65rem; color: #888; }
+
+        /* Search box styling */
+        .leaflet-control-geocoder {
+            background: #16213e !important;
+            border: 1px solid #0f3460 !important;
+        }
+        .leaflet-control-geocoder-form input {
+            background: #1a1a2e !important;
+            color: #eee !important;
+        }
+        .leaflet-control-geocoder-alternatives {
+            background: #16213e !important;
+        }
+        .leaflet-control-geocoder-alternatives a {
+            color: #eee !important;
+        }
+        .leaflet-control-geocoder-alternatives a:hover {
+            background: #0f3460 !important;
+        }
+
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; grid-template-rows: 50vh auto; }
+            .sidebar { order: 2; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div>
+            <h1>Liquefaction Alert System</h1>
+            <span class="version">Boulanger & Idriss (2014)</span>
+        </div>
+        <a href="/api/docs" style="color: #e94560; text-decoration: none; font-size: 0.85rem;">API</a>
+    </header>
+
+    <div class="container">
+        <div class="sidebar">
+            <!-- Location -->
+            <div class="sidebar-section">
+                <div class="section-title">Location</div>
+                <div class="location-box">
+                    <div class="coords" id="coordsDisplay">-- , --</div>
+                    <div class="hint">Click map or search to select location</div>
+                </div>
+
+                <button class="btn btn-primary" id="analyzeBtn" onclick="runAnalysis()" disabled>
+                    Run Analysis
+                </button>
+
+                <button class="btn toggle-advanced" onclick="toggleAdvanced()">
+                    Advanced Options
+                </button>
+            </div>
+
+            <!-- Advanced Options (Hidden by default) -->
+            <div class="sidebar-section advanced-panel" id="advancedPanel">
+                <div class="section-title">Soil Parameters</div>
+
+                <div class="form-group">
+                    <label>Test Type</label>
+                    <select id="testType" onchange="switchTestType()">
+                        <option value="spt">SPT (Standard Penetration Test)</option>
+                        <option value="cpt">CPT (Cone Penetration Test)</option>
+                    </select>
+                </div>
+
+                <div id="sptFields">
+                    <div class="form-group">
+                        <label>Average SPT N-value (blows/ft)</label>
+                        <input type="number" id="avgSptN" value="15" min="1" max="100">
+                    </div>
+                </div>
+
+                <div id="cptFields" class="hidden">
+                    <div class="form-group">
+                        <label>Average CPT qc (MPa)</label>
+                        <input type="number" id="avgCptQc" value="8" min="0.1" step="0.1">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Groundwater (m)</label>
+                        <input type="number" id="gwt" value="2.0" min="0" step="0.5">
+                    </div>
+                    <div class="form-group">
+                        <label>Fines Content (%)</label>
+                        <input type="number" id="fines" value="15" min="0" max="100">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Analysis Depth (m)</label>
+                    <input type="number" id="depth" value="15" min="1" max="30">
+                </div>
+
+                <div class="section-title" style="margin-top: 1rem;">Earthquake (Optional)</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Magnitude</label>
+                        <input type="number" id="magnitude" step="0.1" placeholder="Auto">
+                    </div>
+                    <div class="form-group">
+                        <label>PGA (g)</label>
+                        <input type="number" id="pga" step="0.01" placeholder="Auto">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div class="sidebar-section" id="resultsSection">
+                <div class="section-title">Results</div>
+
+                <div id="noResults" class="location-box">
+                    <div class="hint">Select a location and run analysis</div>
+                </div>
+
+                <div id="loadingIndicator" class="loading hidden">
+                    <div class="spinner"></div>
+                    <span>Analyzing...</span>
+                </div>
+
+                <div id="resultsContainer" class="hidden">
+                    <div class="result-card">
+                        <div class="fs-value fs-low" id="fsValue">--</div>
+                        <div class="fs-label">Factor of Safety</div>
+                        <span class="risk-badge risk-low" id="riskBadge">--</span>
+                    </div>
+
+                    <div class="eq-info" id="eqInfo">
+                        <div>
+                            <div class="label">Earthquake</div>
+                            <div class="mag" id="eqMag">M --</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="label">PGA at Site</div>
+                            <div class="pga" id="eqPga">-- g</div>
+                        </div>
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="value" id="critDepth">--</div>
+                            <div class="label">Critical Depth (m)</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="value" id="lpiValue">--</div>
+                            <div class="label">LPI</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="value" id="elevation">--</div>
+                            <div class="label">Elevation (m)</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="value" id="landCover">--</div>
+                            <div class="label">Land Cover</div>
+                        </div>
+                    </div>
+
+                    <div class="recommendation" id="recommendation">--</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <script>
+        // State
+        let selectedLat = null;
+        let selectedLng = null;
+        let marker = null;
+
+        // Initialize map
+        const map = L.map('map').setView([0, 120], 3);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OSM & CartoDB'
+        }).addTo(map);
+
+        // Add search control
+        const geocoder = L.Control.geocoder({
+            defaultMarkGeocode: false,
+            placeholder: 'Search location...',
+            errorMessage: 'Not found'
+        }).on('markgeocode', function(e) {
+            const latlng = e.geocode.center;
+            setLocation(latlng.lat, latlng.lng);
+            map.setView(latlng, 12);
+        }).addTo(map);
+
+        // Map click
+        map.on('click', function(e) {
+            setLocation(e.latlng.lat, e.latlng.lng);
+        });
+
+        function setLocation(lat, lng) {
+            selectedLat = lat;
+            selectedLng = lng;
+
+            document.getElementById('coordsDisplay').textContent =
+                `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            document.getElementById('analyzeBtn').disabled = false;
+
+            if (marker) {
+                marker.setLatLng([lat, lng]);
+            } else {
+                marker = L.marker([lat, lng], {
+                    draggable: true
+                }).addTo(map);
+
+                marker.on('dragend', function() {
+                    const pos = marker.getLatLng();
+                    setLocation(pos.lat, pos.lng);
+                });
+            }
+        }
+
+        function toggleAdvanced() {
+            const panel = document.getElementById('advancedPanel');
+            panel.classList.toggle('show');
+        }
+
+        function switchTestType() {
+            const type = document.getElementById('testType').value;
+            document.getElementById('sptFields').classList.toggle('hidden', type !== 'spt');
+            document.getElementById('cptFields').classList.toggle('hidden', type !== 'cpt');
+        }
+
+        async function runAnalysis() {
+            if (!selectedLat || !selectedLng) return;
+
+            // Show loading
+            document.getElementById('loadingIndicator').classList.remove('hidden');
+            document.getElementById('noResults').classList.add('hidden');
+            document.getElementById('resultsContainer').classList.add('hidden');
+            document.getElementById('analyzeBtn').disabled = true;
+
+            // Build request with defaults
+            const testType = document.getElementById('testType').value;
+            const request = {
+                latitude: selectedLat,
+                longitude: selectedLng,
+                groundwater_depth: parseFloat(document.getElementById('gwt').value) || 2.0,
+                fines_content: parseFloat(document.getElementById('fines').value) || 15,
+                analysis_depth: parseFloat(document.getElementById('depth').value) || 15
+            };
+
+            if (testType === 'spt') {
+                request.avg_spt_n = parseInt(document.getElementById('avgSptN').value) || 15;
+            } else {
+                request.avg_cpt_qc = parseFloat(document.getElementById('avgCptQc').value) || 8;
+            }
+
+            const mag = document.getElementById('magnitude').value;
+            const pga = document.getElementById('pga').value;
+            if (mag) request.earthquake_magnitude = parseFloat(mag);
+            if (pga) request.pga = parseFloat(pga);
+
+            try {
+                const response = await fetch('/api/analyze/quick', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(request)
+                });
+
+                if (!response.ok) throw new Error('Analysis failed');
+                const result = await response.json();
+                displayResults(result);
+            } catch (e) {
+                alert('Error: ' + e.message);
+            } finally {
+                document.getElementById('loadingIndicator').classList.add('hidden');
+                document.getElementById('analyzeBtn').disabled = false;
+            }
+        }
+
+        function displayResults(result) {
+            document.getElementById('resultsContainer').classList.remove('hidden');
+
+            const risk = result.risk_assessment;
+            const fs = risk.overall_fs;
+
+            // Factor of Safety
+            const fsEl = document.getElementById('fsValue');
+            fsEl.textContent = fs.toFixed(2);
+            fsEl.className = 'fs-value';
+
+            const badge = document.getElementById('riskBadge');
+            badge.className = 'risk-badge';
+
+            if (fs < 0.5) {
+                fsEl.classList.add('fs-very-high');
+                badge.classList.add('risk-very-high');
+                badge.textContent = 'VERY HIGH RISK';
+            } else if (fs < 1.0) {
+                fsEl.classList.add('fs-high');
+                badge.classList.add('risk-high');
+                badge.textContent = 'HIGH RISK';
+            } else if (fs < 1.5) {
+                fsEl.classList.add('fs-moderate');
+                badge.classList.add('risk-moderate');
+                badge.textContent = 'MODERATE';
+            } else {
+                fsEl.classList.add('fs-low');
+                badge.classList.add('risk-low');
+                badge.textContent = 'LOW RISK';
+            }
+
+            // Earthquake
+            if (result.earthquake) {
+                document.getElementById('eqMag').textContent = `M ${result.earthquake.magnitude.toFixed(1)}`;
+                document.getElementById('eqPga').textContent = `${result.earthquake.pga.toFixed(3)} g`;
+            }
+
+            // Info grid
+            document.getElementById('critDepth').textContent = risk.critical_depth.toFixed(1);
+            document.getElementById('lpiValue').textContent = risk.lpi ? risk.lpi.toFixed(1) : '--';
+
+            if (result.location && result.location.elevation != null) {
+                document.getElementById('elevation').textContent = Math.round(result.location.elevation);
+            } else {
+                document.getElementById('elevation').textContent = '--';
+            }
+
+            if (result.land_cover && result.land_cover.land_cover_type) {
+                let lc = result.land_cover.land_cover_type;
+                document.getElementById('landCover').textContent = lc.length > 12 ? lc.slice(0, 10) + '..' : lc;
+            } else {
+                document.getElementById('landCover').textContent = '--';
+            }
+
+            // Recommendation
+            document.getElementById('recommendation').textContent = risk.recommendation;
+
+            // Add result marker color
+            if (marker) {
+                const color = fs < 0.5 ? '#dc3545' : fs < 1.0 ? '#fd7e14' : fs < 1.5 ? '#ffc107' : '#28a745';
+                marker.setIcon(L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="background:${color};width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 2px 5px rgba(0,0,0,0.3);"></div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                }));
+            }
+        }
+    </script>
+</body>
+</html>
